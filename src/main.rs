@@ -3,10 +3,14 @@ use std::fmt;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 
+enum RankValue {
+    Standard(u8),
+    Ace(u8, u8)
+}
+
 #[derive(Clone)]
 #[derive(Copy)]
-#[derive(Debug)]
-enum Card {
+enum CardRank {
     Ace,
     Two,
     Three,
@@ -22,9 +26,9 @@ enum Card {
     King
 }
 
-impl fmt::Display for Card {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let s = match self {
+impl CardRank {
+    fn display(&self) -> &str {
+        match self {
             Self::Ace => "A",
             Self::Two => "2",
             Self::Three => "3",
@@ -38,33 +42,62 @@ impl fmt::Display for Card {
             Self::Jack => "J",
             Self::Queen => "Q",
             Self::King => "K"
-        };
+        }
+    }
 
-        write!(f, "{}", s)
+    fn value(&self) -> RankValue {
+        match self {
+            Self::Ace => RankValue::Ace(1, 11),
+            Self::Two => RankValue::Standard(2),
+            Self::Three => RankValue::Standard(3),
+            Self::Four => RankValue::Standard(4),
+            Self::Five => RankValue::Standard(5),
+            Self::Six => RankValue::Standard(6),
+            Self::Seven => RankValue::Standard(7),
+            Self::Eight => RankValue::Standard(8),
+            Self::Nine => RankValue::Standard(9),
+            Self::Ten | Self:: Jack | Self::Queen | Self::King => RankValue::Standard(10)
+        }
     }
 }
 
-#[derive(Debug)]
-enum CardValue {
-    Standard(u8),
-    Ace(u8, u8)
+#[derive(Clone)]
+#[derive(Copy)]
+enum CardSuit {
+    Club,
+    Diamond,
+    Heart,
+    Spade
+}
+
+impl CardSuit {
+    fn display(&self) -> &str {
+        match self {
+            Self::Club => "\u{2663}",
+            Self::Diamond => "\u{2666}",
+            Self::Heart => "\u{2665}",
+            Self::Spade => "\u{2660}"
+        }
+    }
+}
+
+#[derive(Clone)]
+#[derive(Copy)]
+struct Card {
+    rank: CardRank,
+    suit: CardSuit
+}
+
+impl fmt::Display for Card {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+
+        write!(f, "[{} {}]", self.rank.display(), self.suit.display())
+    }
 }
 
 impl Card {
-    fn value(&self) -> CardValue {
-        match self {
-            Self::Ace => CardValue::Ace(1, 11),
-            Self::Two => CardValue::Standard(2),
-            Self::Three => CardValue::Standard(3),
-            Self::Four => CardValue::Standard(4),
-            Self::Five => CardValue::Standard(5),
-            Self::Six => CardValue::Standard(6),
-            Self::Seven => CardValue::Standard(7),
-            Self::Eight => CardValue::Standard(8),
-            Self::Nine => CardValue::Standard(9),
-            Self::Ten | Self:: Jack | Self::Queen | Self::King => CardValue::Standard(10)
-
-        }
+    fn value(&self) -> RankValue {
+        self.rank.value()
     }
 }
 
@@ -79,8 +112,8 @@ impl Hand {
         // count up standard values and number of aces
         for value in values {
             match value {
-                CardValue::Standard(val) => score += val,
-                CardValue::Ace(low, high) => aces.push((low, high))
+                RankValue::Standard(val) => score += val,
+                RankValue::Ace(low, high) => aces.push((low, high))
             }
         }
 
@@ -97,29 +130,33 @@ impl Hand {
     }
 }
 
-#[derive(Debug)]
 struct Deck(Vec<Card>);
 
 impl Deck {
     fn build_ordered() -> Vec<Card> {
-        let options = [
-            Card::Ace,
-            Card::Two,
-            Card::Three,
-            Card::Four,
-            Card::Five,
-            Card::Six,
-            Card::Seven,
-            Card::Eight,
-            Card::Nine,
-            Card::Ten,
-            Card::Jack,
-            Card::Queen,
-            Card::King
+        let rank_options = [
+            CardRank::Ace,
+            CardRank::Two,
+            CardRank::Three,
+            CardRank::Four,
+            CardRank::Five,
+            CardRank::Six,
+            CardRank::Seven,
+            CardRank::Eight,
+            CardRank::Nine,
+            CardRank::Ten,
+            CardRank::Jack,
+            CardRank::Queen,
+            CardRank::King
         ];
 
-        options.iter()
-            .map(|opt| [opt.clone(), opt.clone(), opt.clone(), opt.clone()])
+        rank_options.iter()
+            .map(|opt| [
+                 Card { rank: opt.clone(), suit: CardSuit::Diamond },
+                 Card { rank: opt.clone(), suit: CardSuit::Club },
+                 Card { rank: opt.clone(), suit: CardSuit::Heart },
+                 Card { rank: opt.clone(), suit: CardSuit::Spade }
+            ])
             .flatten()
             .collect()
     }
@@ -181,9 +218,10 @@ impl Deck {
 // }
 //
 fn main() {
-    println!("{}", Card::Ace);
-    println!("{:?}", Card::Five.value());
     let mut deck = Deck(Vec::new());
     deck.build();
-    println!("{:?}", deck.0);
+
+    for card in deck.0 {
+        print!("{} ", card);
+    }
 }
