@@ -3,6 +3,7 @@ use std::fmt;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 
+#[derive(Debug)]
 enum RankValue {
     Standard(u8),
     Ace(u8, u8)
@@ -10,6 +11,7 @@ enum RankValue {
 
 #[derive(Clone)]
 #[derive(Copy)]
+#[derive(Debug)]
 enum CardRank {
     Ace,
     Two,
@@ -63,6 +65,7 @@ impl CardRank {
 
 #[derive(Clone)]
 #[derive(Copy)]
+#[derive(Debug)]
 enum CardSuit {
     Club,
     Diamond,
@@ -83,6 +86,7 @@ impl CardSuit {
 
 #[derive(Clone)]
 #[derive(Copy)]
+#[derive(Debug)]
 struct Card {
     rank: CardRank,
     suit: CardSuit
@@ -91,7 +95,7 @@ struct Card {
 impl fmt::Display for Card {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 
-        write!(f, "[{} {}]", self.rank.display(), self.suit.display())
+        write!(f, "{}", self.display())
     }
 }
 
@@ -99,8 +103,13 @@ impl Card {
     fn value(&self) -> RankValue {
         self.rank.value()
     }
+
+    fn display(&self) -> String {
+        ["[", self.rank.display(), self.suit.display(), "]"].join(" ")
+    }
 }
 
+#[derive(Debug)]
 struct Hand(Vec<Card>);
 
 impl Hand {
@@ -127,6 +136,10 @@ impl Hand {
         }
 
         score
+    }
+
+    fn display(&self) -> String {
+        self.0.iter().map(|card| card.display()).collect::<Vec<String>>().join(" ")
     }
 }
 
@@ -172,13 +185,34 @@ impl Deck {
         self.0 = Deck::build_ordered();
         self.shuffle();
     }
+
+    fn deal_player(&mut self) -> Hand {
+        let results = [ self.0.pop(), self.0.pop() ];
+
+        let hand = results.map(|res| {
+            match res {
+                Some(val) => val,
+                None => panic!("Unable to draw a card!")
+            }
+        });
+
+        Hand(Vec::from(hand))
+    }
 }
 
-// struct Player {
-//     name: String,
-//     hand: Hand
-// }
-//
+#[derive(Debug)]
+struct Player {
+    name: String,
+    hand: Hand
+}
+
+impl fmt::Display for Player {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+
+        write!(f, "{}'s hand: {}", self.name, self.hand.display())
+    }
+}
+
 // struct Game {
 //     players: Vec<Player>,
 //     deck: Vec<Card>,
@@ -201,27 +235,14 @@ impl Deck {
 //     player_count
 // }
 
-// fn initialize_deck() -> Vec<Card> {
-//     let mut deck: Vec<Card> = Vec::new();
-//
-//     for opt in options {
-//         for _num in 1..4 {
-//             deck.push(opt);
-//         }
-//     }
-//
-//     deck
-// }
-//
 // fn make_game() {
 //     let deck = initialize_deck();
 // }
-//
+
 fn main() {
     let mut deck = Deck(Vec::new());
     deck.build();
 
-    for card in deck.0 {
-        print!("{} ", card);
-    }
+    let dealer = Player { name: String::from("Mr. Zamboni"), hand: deck.deal_player() };
+    println!("{}", dealer);
 }
