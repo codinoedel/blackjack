@@ -200,12 +200,53 @@ impl Deck {
 #[derive(Debug)]
 struct Player {
     name: String,
-    hand: Hand
+    hand: Hand,
+    is_computer: bool,
+    is_playing: bool,
+
 }
 
 impl Player {
-    fn new(name: String) -> Player {
-        Player { name: name, hand: Hand(Vec::new()) }
+    fn new(name: String, is_computer: bool) -> Player {
+        Player { name: name, hand: Hand(Vec::new()), is_computer: is_computer, is_playing: true }
+    }
+
+    fn take_computer_turn(&mut self) {
+        self.is_playing = false;
+    }
+
+    fn take_user_turn(&mut self) {
+        println!("Would you like to [hit] or [stand]?");
+
+        let mut player_decision = String::new();
+
+        io::stdin().read_line(&mut player_decision)
+            .expect("Failed to read the line!"); // TODO: actually handle the error
+
+        let player_decision: &str = player_decision.trim();
+
+        if player_decision == "stand" {
+            self.is_playing = false;
+        } else if player_decision != "hit" {
+            println!("Unknown move. Please enter \"hit\" or \"stand\".");
+            self.take_user_turn();
+        }
+    }
+
+    fn take_turn(&mut self, deck: &mut Deck) {
+        if self.is_computer {
+            self.take_computer_turn();
+        }
+
+        else {
+            self.take_user_turn();
+        }
+
+        if self.is_playing {
+            self.hand.0.push(deck.take());
+        }
+
+        // TODO: if this card busted the hand, set is_playing to false
     }
 }
 
@@ -237,10 +278,35 @@ impl Game {
         player_count
     }
 
-    fn deal_all(&mut self) {
+    fn deal_in(&mut self) {
         for player in &mut self.players {
             player.hand.0.append(&mut self.deck.deal_cards());
         }
+
+        self.dealer.hand.0.push(self.deck.take());
+    }
+
+    fn print(&self) {
+        // show what each player has
+        for player in &self.players {
+            println!("{}", player);
+        }
+
+        // show what the dealer has
+        println!("{}", self.dealer);
+    }
+
+    fn play(&mut self) {
+        self.print();
+
+        for player in &mut self.players {
+            if player.is_playing {
+                player.take_turn(&mut self.deck);
+            }
+        }
+
+        // TODO: if nobody's playing anymore, resolve the dealer
+        // TODO: figure out who won
     }
 
     fn new() -> Game {
@@ -248,18 +314,26 @@ impl Game {
         let deck = Deck::new();
         let mut players = Vec::new();
 
-        for p in 1..player_count {
-            players.push(Player::new(["Player ", &p.to_string()].join(" ")));
+        players.push(Player::new(String::from("You"), false));
+
+        for p in 2..player_count+1 {
+            players.push(Player::new(["Player ", &p.to_string()].join(" "), true));
         }
 
         Game {
             deck: deck,
-            dealer: Player::new(String::from("Mr. Zamboni")),
+            dealer: Player::new(String::from("Mr. Zamboni"), true),
             players: players
         }
     }
 }
 
 fn main() {
-    let game = Game::new();
+    let mut game = Game::new();
+
+    game.deal_in();
+
+    loop {
+        game.play();
+    }
 }
