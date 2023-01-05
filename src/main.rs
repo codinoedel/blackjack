@@ -1,4 +1,4 @@
-// use std::io;
+use std::io;
 use std::fmt;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
@@ -92,13 +92,6 @@ struct Card {
     suit: CardSuit
 }
 
-impl fmt::Display for Card {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-
-        write!(f, "{}", self.display())
-    }
-}
-
 impl Card {
     fn value(&self) -> RankValue {
         self.rank.value()
@@ -106,6 +99,13 @@ impl Card {
 
     fn display(&self) -> String {
         ["[", self.rank.display(), self.suit.display(), "]"].join(" ")
+    }
+}
+
+impl fmt::Display for Card {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+
+        write!(f, "{}", self.display())
     }
 }
 
@@ -181,22 +181,19 @@ impl Deck {
         deck_slice.shuffle(&mut rng);
     }
 
-    fn build(&mut self) {
-        self.0 = Deck::build_ordered();
-        self.shuffle();
+    fn new() -> Deck {
+        let mut deck = Deck(Self::build_ordered());
+        deck.shuffle();
+
+        deck
     }
 
-    fn deal_player(&mut self) -> Hand {
-        let results = [ self.0.pop(), self.0.pop() ];
+    fn take(&mut self) -> Card {
+        self.0.pop().unwrap()
+    }
 
-        let hand = results.map(|res| {
-            match res {
-                Some(val) => val,
-                None => panic!("Unable to draw a card!")
-            }
-        });
-
-        Hand(Vec::from(hand))
+    fn deal_cards(&mut self) -> Vec<Card> {
+        vec![ self.take(), self.take() ]
     }
 }
 
@@ -206,6 +203,12 @@ struct Player {
     hand: Hand
 }
 
+impl Player {
+    fn new(name: String) -> Player {
+        Player { name: name, hand: Hand(Vec::new()) }
+    }
+}
+
 impl fmt::Display for Player {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 
@@ -213,36 +216,50 @@ impl fmt::Display for Player {
     }
 }
 
-// struct Game {
-//     players: Vec<Player>,
-//     deck: Vec<Card>,
-//     table: Vec<Card>
-// }
+struct Game {
+    dealer: Player,
+    players: Vec<Player>,
+    deck: Deck
+}
 
-// fn get_player_count() -> u8 {
-//     println!("How many players (including yourself)?");
-//
-//     let mut player_count = String::new();
-//
-//     io::stdin().read_line(&mut player_count)
-//         .expect("Failed to read the line!"); // TODO: actually handle the error
-//
-//     let player_count: u8 = player_count.trim().parse()
-//         .expect("Please enter a number between 5 and 9."); // TODO: actually handle the error
-//
-//     println!("Setting up game for {player_count} players...");
-//
-//     player_count
-// }
+impl Game {
+    fn get_player_count() -> u8 {
+        println!("How many players (including yourself)?");
 
-// fn make_game() {
-//     let deck = initialize_deck();
-// }
+        let mut player_count = String::new();
+
+        io::stdin().read_line(&mut player_count)
+            .expect("Failed to read the line!"); // TODO: actually handle the error
+
+        let player_count: u8 = player_count.trim().parse()
+            .expect("Please enter a number between 1 and 9."); // TODO: actually handle the error
+
+        player_count
+    }
+
+    fn deal_all(&mut self) {
+        for player in &mut self.players {
+            player.hand.0.append(&mut self.deck.deal_cards());
+        }
+    }
+
+    fn new() -> Game {
+        let player_count = Self::get_player_count();
+        let deck = Deck::new();
+        let mut players = Vec::new();
+
+        for p in 1..player_count {
+            players.push(Player::new(["Player ", &p.to_string()].join(" ")));
+        }
+
+        Game {
+            deck: deck,
+            dealer: Player::new(String::from("Mr. Zamboni")),
+            players: players
+        }
+    }
+}
 
 fn main() {
-    let mut deck = Deck(Vec::new());
-    deck.build();
-
-    let dealer = Player { name: String::from("Mr. Zamboni"), hand: deck.deal_player() };
-    println!("{}", dealer);
+    let game = Game::new();
 }
