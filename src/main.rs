@@ -213,6 +213,8 @@ impl Player {
 
     fn take_computer_turn(&mut self) {
         self.is_playing = false;
+
+        // TODO: decide when to stop
     }
 
     fn take_user_turn(&mut self) {
@@ -246,14 +248,26 @@ impl Player {
             self.hand.0.push(deck.take());
         }
 
-        // TODO: if this card busted the hand, set is_playing to false
+        // end play for a busted hand
+        if self.hand.score() > 21 {
+            println!("This hand has busted. Better luck next time.");
+            self.is_playing = false;
+        }
+    }
+
+    fn resolve_dealer(&mut self, deck: &mut Deck) {
+        while self.hand.score() < 17 {
+            self.hand.0.push(deck.take());
+            println!("{}", self);
+        }
     }
 }
 
 impl fmt::Display for Player {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 
-        write!(f, "{}'s hand: {}", self.name, self.hand.display())
+        write!(f, "{}'s hand: {}  |  score: {}",
+               self.name, self.hand.display(), self.hand.score())
     }
 }
 
@@ -296,7 +310,14 @@ impl Game {
         println!("{}", self.dealer);
     }
 
-    fn play(&mut self) {
+    fn find_winner(&self) -> Option<&Player> {
+        // TODO: add dealer to scoring
+        self.players.iter()
+            .filter(|p| p.hand.score() < 21) // unbusted
+            .max_by(|p_1, p_2| p_1.hand.score().cmp(&p_2.hand.score()))
+    }
+
+    fn play(&mut self) -> bool {
         self.print();
 
         for player in &mut self.players {
@@ -305,8 +326,24 @@ impl Game {
             }
         }
 
-        // TODO: if nobody's playing anymore, resolve the dealer
-        // TODO: figure out who won
+        let has_playing_players = self.players.iter().any(|e| e.is_playing);
+
+        println!("");
+
+        if !has_playing_players {
+            self.dealer.resolve_dealer(&mut self.deck);
+
+            let winner = self.find_winner();
+
+            match winner {
+                Some(w) => println!("{} has won the game!", w.name),
+                None => println!("Nobody won this game.")
+            };
+
+            return false;
+        }
+
+        return true;
     }
 
     fn new() -> Game {
@@ -334,6 +371,12 @@ fn main() {
     game.deal_in();
 
     loop {
-        game.play();
+        println!("");
+
+        let should_continue = game.play();
+
+        if !should_continue {
+            break;
+        }
     }
 }
