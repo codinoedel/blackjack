@@ -1,7 +1,7 @@
 use std::io;
 use std::fmt;
 use rand::seq::SliceRandom;
-use rand::thread_rng;
+use rand::Rng;
 
 #[derive(Debug)]
 enum RankValue {
@@ -175,7 +175,7 @@ impl Deck {
     }
 
     fn shuffle(&mut self) {
-        let mut rng = thread_rng();
+        let mut rng = rand::thread_rng();
         let deck_slice = self.0.as_mut_slice();
 
         deck_slice.shuffle(&mut rng);
@@ -212,9 +212,14 @@ impl Player {
     }
 
     fn take_computer_turn(&mut self) {
-        self.is_playing = false;
+        let self_limit: f32 = (rand::thread_rng().gen::<f32>() * 4.0).ceil() + 15.0;
 
-        // TODO: decide when to stop
+        if f32::from(self.hand.score()) >= self_limit {
+            println!("{} decided to stand.", self.name);
+            self.is_playing = false;
+        } else {
+            println!("{} decided to hit.", self.name);
+        }
     }
 
     fn take_user_turn(&mut self) {
@@ -248,14 +253,19 @@ impl Player {
             self.hand.0.push(deck.take());
         }
 
+        println!("{}", self);
+
         // end play for a busted hand
         if self.hand.score() > 21 {
             println!("This hand has busted. Better luck next time.");
             self.is_playing = false;
         }
+
+        println!("");
     }
 
     fn resolve_dealer(&mut self, deck: &mut Deck) {
+        println!("Resolving the dealer's hand...");
         while self.hand.score() < 17 {
             self.hand.0.push(deck.take());
             println!("{}", self);
@@ -311,10 +321,38 @@ impl Game {
     }
 
     fn find_winner(&self) -> Option<&Player> {
-        // TODO: add dealer to scoring
-        self.players.iter()
-            .filter(|p| p.hand.score() < 21) // unbusted
-            .max_by(|p_1, p_2| p_1.hand.score().cmp(&p_2.hand.score()))
+        let closest_player = self.players.iter()
+            .filter(|p| p.hand.score() <= 21) // unbusted
+            .max_by(|p_1, p_2| p_1.hand.score().cmp(&p_2.hand.score()));
+
+        // TODO: memoize score on the Player struct so we don't have to recalc for each of these
+        match closest_player {
+            Some(cp) => {
+                // if dealer tops, dealer wins.
+                if self.dealer.hand.score() <= 21 && self.dealer.hand.score() > cp.hand.score() {
+                    return Some(&self.dealer);
+                }
+
+                // if not, make sure we don't have ties. if ties, nobody wins.
+                let top_players = self.players.iter()
+                    .filter(|p| p.hand.score() == cp.hand.score());
+
+                if top_players.count() > 1 || cp.hand.score() == self.dealer.hand.score() {
+                    return None;
+                }
+
+                return Some(cp);
+            },
+
+            None => {
+                // if every player busted, see if dealer busted or not
+                if self.dealer.hand.score() <= 21 {
+                    return Some(&self.dealer);
+                }
+
+                return None;
+            }
+        }
     }
 
     fn play(&mut self) -> bool {
